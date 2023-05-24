@@ -36,7 +36,6 @@ def train_one_batch(data, model, criterion, optimizer):
     return loss.item(), logits.data, targets
 
 def run_one_epoch(data_loader, model, criterion, optimizer, epoch, phase, multi_label):
-    loader_len = len(data_loader)
     
     all_preds, all_targets, all_batch_losses, all_logits = [], [], [], []
 
@@ -73,7 +72,23 @@ def train(model: GraphClassifier, loaders, dataset, model_config):
         test_res, _ = run_one_epoch(loaders['test'], model, criterion, None, epoch, 'test', multi_label)
         print("\n")
         
-def quick_eval_model(model: GraphClassifier, dataset, loader, model_config):
+def quick_eval_model(model: GraphClassifier, dataset, test_loader, model_config):
     multi_label = model_config['multi_label']
     criterion = Criterion(dataset.num_classes, multi_label)
-    test_res, _ = run_one_epoch(loader, model, criterion, None, 0, 'test', multi_label)
+    all_preds, all_targets, all_batch_losses, all_logits = [], [], [], []
+
+    for data in test_loader:
+        loss, logits, targets = eval_one_batch(data, model, criterion, None)
+        preds = get_preds(logits, multi_label)
+
+        all_preds.append(preds)
+        all_targets.append(targets)
+        all_batch_losses.append(loss)
+        all_logits.append(logits)
+
+    all_preds, all_targets, all_logits = np.concatenate(all_preds), np.concatenate(all_targets), np.concatenate(all_logits)
+    all_acc = (all_preds == all_targets).sum() / (all_targets.shape[0] * all_targets.shape[1]) if multi_label else (all_preds == all_targets).sum().item() / all_targets.shape[0]
+
+    print(f'[Evaluating Model]: Classifier accuracy: {all_acc:.3f}')
+
+    return all_acc, np.mean(all_batch_losses)

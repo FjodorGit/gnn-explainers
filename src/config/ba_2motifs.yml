@@ -44,6 +44,7 @@ gnnexplainer:
     return_type: 'raw'  
   
 pgexplainer:
+  use_cached_explainer: True
   lr: 0.005
   epochs: 30
   explanation_type: 'phenomenon'

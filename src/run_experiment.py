@@ -14,6 +14,7 @@ from torch_geometric.data import Data, Dataset
 from torch_geometric.loader import DataLoader
 from classifiers.train_classfier import quick_eval_model, run_one_epoch, train
 from explainers.gnnexplainer import get_gnnexplainer
+from torch_geometric.seed import seed_everything
 
 def get_data_loaders(dataset_name: str, batch_size: int) -> tuple[Dataset, dict]:
     if dataset_name == "ba_2motifs":
@@ -34,9 +35,8 @@ def get_explainer(explainer_name: str, classifier: GraphClassifier, configuratio
         gnnexplainer_config = configuration['gnnexplainer']
         return get_gnnexplainer(classifier, gnnexplainer_config)
     if explainer_name == "PGExplainer":
-        pgexplainer_config = configuration['pgexplainer']
         assert loaders is not None
-        return get_pgexplainer(classifier, loaders['train'], pgexplainer_config)
+        return get_pgexplainer(classifier, loaders['train'], configuration)
     if explainer_name == "GSATExplainer":
         return get_gsatexplainer(classifier, loaders, configuration)
     else:
@@ -56,12 +56,16 @@ def get_classification_model(dataset:Dataset ,model_name: str, configuration: di
         raise NotImplemented
 
 def main(dataset_name: str, classifier_name: str, explainer_name: str):
+    seed_everything(41)
     with open(f'./config/{dataset_name}.yml', 'r') as config_file:
         configuration = yaml.safe_load(config_file)
     batch_size = configuration['batch_size']
     dataset, loaders = get_data_loaders(dataset_name, batch_size)
     
     configuration['num_classes'] = dataset.num_classes
+    configuration['dataset_name'] = dataset_name
+    configuration['classifier_name'] = classifier_name
+    
     classifier, model_configuration = get_classification_model(dataset, classifier_name, configuration)
     classifier_state_dict_path = f"../models/{dataset_name}-{classifier_name}.pt"
     if configuration['use_cached_classifier'] and Path(classifier_state_dict_path).exists():
