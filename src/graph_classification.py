@@ -2,8 +2,6 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from torch_geometric.data import Dataset
 import yaml
-from  GSAT.src.models.gin import GIN
-from  GSAT.GSATExplainer import GSATExplainer
 from networkx.classes.graph import Graph
 from torch_geometric.data.data import Data
 
@@ -38,26 +36,36 @@ NUM_HIDDEN_CHANNELS = 64
 class GCN(torch.nn.Module):
     def __init__(self, hidden_channels, dataset):
         super(GCN, self).__init__()
-        torch.manual_seed(12345)
         self.conv1 = GCNConv(dataset.num_node_features, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, hidden_channels)
         self.conv3 = GCNConv(hidden_channels, hidden_channels)
         self.lin = Linear(hidden_channels, dataset.num_classes)
 
-    def forward(self, x, edge_index, batch):
+    def forward(self, x, edge_index, batch, edge_attr=None, edge_atten=None):
         # 1. Obtain node embeddings 
         x = self.conv1(x, edge_index)
         x = x.relu()
         x = self.conv2(x, edge_index)
         x = x.relu()
         x = self.conv3(x, edge_index)
-
+        
         # 2. Readout layer
         x = global_mean_pool(x, batch)  # [batch_size, hidden_channels]
 
         # 3. Apply a final classifier
         x = F.dropout(x, p=0.5, training=self.training)
         x = F.softmax(self.lin(x))
+        
+        return x
+
+    def get_emb(self, x, edge_index, batch, edge_attr=None):
+        
+        # 1. Obtain node embeddings 
+        x = self.conv1(x, edge_index)
+        x = x.relu()
+        x = self.conv2(x, edge_index)
+        x = x.relu()
+        x = self.conv3(x, edge_index)
         
         return x
 
@@ -103,7 +111,7 @@ def load_model(state_dict_path, model_type, **kargs):
     model.load_state_dict(torch.load(state_dict_path))
     return model
 
-def visualize_explanations_on_mutag(graphs: list[Data], explainers: list[tuple[Explainer, str]], seed: int | None):      
+def visualize_explanations_on_mutag(graphs: list[Data], explainers: list[tuple[Explainer, str]], seed: int | None, topk=0.25):      
     
     ATOM_MAP = ['C', 'N', 'O', 'F', 'I', 'Cl', 'Br']
     
@@ -130,17 +138,21 @@ def visualize_explanations_on_mutag(graphs: list[Data], explainers: list[tuple[E
             num_subplot += 1
             batch = torch.zeros(len(graph.x), dtype=torch.int64)
             pred = explainer.get_prediction(graph.x, graph.edge_index, batch=batch)
-            explanation: Explanation | HeteroExplanation = explainer(graph.x, graph.edge_index, target=target, batch=batch, dtype=torch.int64)
+            explanation: Explanation | HeteroExplanation = explainer(graph.x, graph.edge_index, target=target, batch=batch)
             
-            undirected_graph_edge_mask = aggregate_edge_directions(explanation.get("edge_mask"), graph)
+            topk_num = int(len(graph.edge_index[0]) * topk)
+            threshold = torch.sort(explanation.get("edge_mask"))[0][-topk_num]
+            
+            edge_mask = explanation.get("edge_mask") * (explanation.get("edge_mask")>threshold)
+            undirected_graph_edge_mask = aggregate_edge_directions(edge_mask, graph)
 
             pos = nx.kamada_kawai_layout(netx_graph)
 
             widths = [3*undirected_graph_edge_mask[key] for key in netx_graph.edges]
             edge_color = [(1,0,0) if undirected_graph_edge_mask[key] > 0 else (0,0,0) for key in netx_graph.edges]
-            visualization_title = f"Explanaitions from {explainer_name}" if graph_num == 0 else ''
+            column_title = f"Explanaitions from {explainer_name}\n\n" if graph_num == 0 else ''
+            visualization_title = column_title + f"{target.tolist()} vs [{pred[0][0]:.4f}, {pred[0][1].item():.4f}]" 
             plt.subplot(len(graphs),len(explainers), num_subplot, title=visualization_title).title.set_size(30)
-            plt.xlabel(f"Actual Label {target} vs Predicted Label {pred}")
             nx.draw(netx_graph, pos=pos, labels=node_labels, node_size=600, node_color = "white", font_color="black", font_size="30")
             nx.draw_networkx_edges(netx_graph, pos=pos, width=widths, edge_color=edge_color)
             
@@ -204,7 +216,7 @@ def run_explanation_visualization(seeds: list[int]):
         
         gnnexplainer = Explainer(
             model=model,
-            algorithm=GNNExplainer(epochs=300),
+            algorithm=GNNExplainer(),
             explanation_type='phenomenon',
             node_mask_type='attributes',
             edge_mask_type='object',
@@ -270,11 +282,11 @@ def test_gsatexplainer_visualization():
     model_config = local_config["model_config"]
     multi_label = True
     
-    model: GIN = GIN(train_dataset.num_features, 0, train_dataset.num_classes, multi_label, model_config)
+    model = GCN(hidden_channels=NUM_HIDDEN_CHANNELS, dataset = train_dataset)
 
     gsatexplainer = Explainer(
         model=model,
-        algorithm=GSATExplainer(train_dataset),
+        algorithm=GSATExplainer(train_dataset, model),
         explanation_type='phenomenon',
         node_mask_type=None,
         edge_mask_type='object',
@@ -289,10 +301,11 @@ def test_gsatexplainer_visualization():
     )
     
     # training_classification_model(model, train_dataset, test_dataset, GIN_MODEL_PATH)
-    # gsatexplainer.algorithm.train()
+    gsatexplainer.algorithm.train()
     
-    visualize_explanations_on_mutag(test_dataset[:5], [(gsatexplainer, "GSAT")], seed=41)
+    visualize_explanations_on_mutag(test_dataset[5:10], [(gsatexplainer, "GSAT")], seed=41)
     
 if __name__ == "__main__":
-    # run_explanation_visualization([41,42,43,44])
-    test_gsatexplainer_visualization()
+    torch.set_printoptions(sci_mode=False)
+    run_explanation_visualization([41,42,43,44])
+    # test_gsatexplainer_visualization()

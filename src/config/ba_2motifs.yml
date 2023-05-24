@@ -1,0 +1,69 @@
+batch_size: 64
+use_cached_classifier: True
+topk: 0.10
+  
+shared_config:
+  learn_edge_att: True
+  precision_k: 5
+  num_viz_samples: 8
+  viz_interval: 10
+  viz_norm_att: true
+  extractor_dropout_p: 0.5
+
+gin:
+  hidden_size: 64
+  multi_label: False
+  n_layers: 2
+  dropout_p: 0.3
+  pretrain_lr: 1.0e-3
+  pretrain_epochs: 100
+
+gcn:
+  hidden_size: 64
+  multi_label: False
+  dropout_p: 0.3
+  pretrain_lr: 0.001
+  pretrain_epochs: 150
+
+graphconv:
+  hidden_size: 64
+  multi_label: False
+  dropout_p: 0.3
+  pretrain_lr: 0.001
+  pretrain_epochs: 100
+    
+gnnexplainer:
+  lr: 0.007
+  epochs: 250
+  explanation_type: 'phenomenon'
+  node_mask_type: 'attributes'
+  edge_mask_type: 'object'
+  model_config:
+    mode: 'binary_classification'
+    task_level: 'graph'
+    return_type: 'raw'  
+  
+pgexplainer:
+  lr: 0.005
+  epochs: 30
+  explanation_type: 'phenomenon'
+  node_mask_type: null
+  edge_mask_type: 'object'
+  model_config:
+    mode: 'binary_classification'
+    task_level: 'graph'
+    return_type: 'raw'  
+
+gsatexplainer:
+  extractor_hidden_size: 64
+  precision_k: 5
+  lr: 0.001
+  epochs: 20
+  explanation_type: 'phenomenon'
+  node_mask_type: null
+  edge_mask_type: 'object'
+  multi_label: False
+  model_config:
+    mode: 'binary_classification'
+    task_level: 'graph'
+    return_type: 'raw'  
