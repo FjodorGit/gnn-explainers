@@ -1,4 +1,5 @@
 import sys
+import torch_geometric.graphgym as gym
 import torch
 import numpy as np
 import torch.nn as nn
@@ -38,14 +39,16 @@ def get_gsatexplainer(model, loaders, configuration: dict):
 
 class GSAT(ExplainerAlgorithm):
 
-    def __init__(self, clf, extractor, criterion, optimizer, model_config, learn_edge_att=True, final_r=0.7, decay_interval=10, decay_r=0.1):
+    def __init__(self, clf: nn.Module, extractor, criterion, optimizer, model_config, learn_edge_att=True, final_r=0.7, decay_interval=10, decay_r=0.1):
         super().__init__()
-        self.clf = clf
         self.extractor = extractor
         self.criterion = criterion
         self.optimizer = optimizer
         self.epochs = model_config['epochs']
         self.k = model_config['precision_k']
+        if model_config['from_scratch']:
+            gym.init_weights(clf)
+        self.clf = clf
         self.device = next(self.parameters()).device
 
         self.learn_edge_att = learn_edge_att
@@ -139,6 +142,7 @@ class GSAT(ExplainerAlgorithm):
         return 
     
     def train(self, loaders, use_edge_attr):
+        
         for epoch in range(self.epochs):
             train_res = self.run_one_epoch(loaders['train'], epoch, 'train', use_edge_attr)
             valid_res = self.run_one_epoch(loaders['valid'], epoch, 'valid', use_edge_attr)
