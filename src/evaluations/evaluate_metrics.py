@@ -60,7 +60,6 @@ def my_unfaithfulness(explainer: Explainer, explanation, top_k = 0.2, multi_labe
         y, y_hat = y[explanation.index], y_hat[explanation.index]
 
     if explainer.model_config.return_type == ModelReturnType.raw and not multi_label:
-        print(f"y: {y} | y_hat: {y_hat} | benchmark_y_hat: {benchmark_y_hat}")
         y, y_hat = y.sigmoid(), y_hat.sigmoid()
         benchmark_y_hat = benchmark_y_hat.sigmoid()
         print(f"y: {y} | y_hat: {y_hat} | benchmark_y_hat: {benchmark_y_hat}")

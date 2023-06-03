@@ -30,7 +30,7 @@ graphconv:
   multi_label: False
   dropout_p: 0.3
   pretrain_lr: 0.001
-  pretrain_epochs: 100
+  pretrain_epochs: 50
     
 gnnexplainer:
   lr: 0.007

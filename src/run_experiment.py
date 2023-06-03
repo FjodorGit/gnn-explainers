@@ -1,6 +1,9 @@
+import sys
+import matplotlib.pyplot as plt
 from pathlib import Path
+from datasets.circles_vs_houses import Circles_vs_Houses
 from evaluations.evaluate_metrics import evaluate_unfaithfulness
-from evaluations.visualize_explanations import create_explanations
+from evaluations.visualize_explanations import create_explanations, visualize_dataset
 from explainers.gsatexplainer import get_gsatexplainer
 from explainers.pgexplainer import get_pgexplainer
 import yaml
@@ -19,6 +22,8 @@ from torch_geometric.seed import seed_everything
 def get_data_loaders(dataset_name: str, batch_size: int) -> tuple[Dataset, dict]:
     if dataset_name == "ba_2motifs":
         dataset = BA2MotifDataset("./../data/").shuffle()
+    elif dataset_name == "circles_vs_houses":
+        dataset = Circles_vs_Houses("./../data/", "ba_2motifs").shuffle()
     else:
         raise NotImplemented
     train_set = dataset[:int(len(dataset) * 0.8)]
@@ -56,7 +61,7 @@ def get_classification_model(dataset:Dataset ,model_name: str, configuration: di
         raise NotImplemented
 
 def main(dataset_name: str, classifier_name: str, explainer_name: str):
-    seed_everything(41)
+    # seed_everything(41)
     with open(f'./config/{dataset_name}.yml', 'r') as config_file:
         configuration = yaml.safe_load(config_file)
     batch_size = configuration['batch_size']
@@ -73,13 +78,14 @@ def main(dataset_name: str, classifier_name: str, explainer_name: str):
         quick_eval_model(classifier, dataset, loaders['test'], model_configuration)
     else:
         train(classifier, loaders, dataset, model_configuration)
-    torch.save(classifier.state_dict(), classifier_state_dict_path)
+        torch.save(classifier.state_dict(), classifier_state_dict_path)
     
     topk = configuration['topk']
     explainer = get_explainer(explainer_name, classifier, configuration, loaders)
-    # create_explanations(explainer, explainer_name, dataset[int(0.8*len(dataset)):], topk=topk)
-    evaluate_unfaithfulness(explainer, explainer_name, dataset[int(0.95*len(dataset)):])
+    create_explanations(explainer, explainer_name, dataset[int(0.8*len(dataset)):], topk=topk)
+    # visualize_dataset(dataset, 5, dataset_name)
+    # evaluate_unfaithfulness(explainer, explainer_name, dataset[int(0.95*len(dataset)):])
 
 
 if __name__ == "__main__":
-    main("ba_2motifs", "GraphConv", "PGExplainer")
+    main("circles_vs_houses", "GraphConv", "PGExplainer")
