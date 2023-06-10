@@ -60,6 +60,7 @@ def evaluate_fidelity(explainers: list[Explainer], explainer_names: list[str], e
     ax[2].set_xlabel("Fidelity+")
     ax[2].set_ylim(bottom=0)
     ax[2].legend()
+    plt.savefig("../explanation_visualizations/fidelity")
     plt.show()
 
 def my_unfaithfulness(explainer: Explainer, explanation, top_k = 0.2, multi_label=False):
