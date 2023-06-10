@@ -8,7 +8,6 @@ from classifiers.abstract_classifier import GraphClassifier
 
 def get_pgexplainer(model: GraphClassifier, train_loader, configuration: dict) -> Explainer:
     
-    
     explainer_configuration = configuration['pgexplainer']
     lr = explainer_configuration['lr']
     use_cached_explainer = explainer_configuration.get('use_cached_explainer', False)
@@ -29,9 +28,8 @@ def get_pgexplainer(model: GraphClassifier, train_loader, configuration: dict) -
         model_config=explainer_configuration['model_config'])    
 
     explainer_state_dict_path = f"../models/explainers/pgexplainer-{dataset_name}-{classifier_name}.pt"
+    #load model
     if use_cached_explainer and Path(explainer_state_dict_path).exists():
-        
-        #load model
         pgexplainer.algorithm = load_model(explainer_state_dict_path, PGExplainer, epochs=epochs, lr=lr)
         config = ExplainerConfig(explainer_configuration['explanation_type'],explainer_configuration['node_mask_type'],explainer_configuration['edge_mask_type'])
         pgexplainer.algorithm.connect(config, explainer_configuration['model_config'])

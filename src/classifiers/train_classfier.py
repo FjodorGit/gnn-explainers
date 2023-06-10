@@ -52,10 +52,10 @@ def run_one_epoch(data_loader, model, criterion, optimizer, epoch, phase, multi_
     all_preds, all_targets, all_logits = np.concatenate(all_preds), np.concatenate(all_targets), np.concatenate(all_logits)
     all_acc = (all_preds == all_targets).sum() / (all_targets.shape[0] * all_targets.shape[1]) if multi_label else (all_preds == all_targets).sum().item() / all_targets.shape[0]
 
-    print(f'[Epoch: {epoch}]: {phase} finished, loss: {np.mean(all_batch_losses):.3f}, acc: {all_acc:.3f}')
+    log_str = f'[Epoch: {epoch}]: Phase {phase} | Loss: {np.mean(all_batch_losses):.3f} | Acc: {all_acc:.3f}'
+    print(log_str)
 
     return all_acc, np.mean(all_batch_losses)
-
 
 def train(model: GraphClassifier, loaders, dataset, model_config):
     

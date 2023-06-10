@@ -2,7 +2,7 @@ import sys
 import matplotlib.pyplot as plt
 from pathlib import Path
 from datasets.circles_vs_houses import Circles_vs_Houses
-from evaluations.evaluate_metrics import evaluate_unfaithfulness
+from evaluations.evaluate_metrics import evaluate_unfaithfulness, evaluate_fidelity
 from evaluations.visualize_explanations import create_explanations, visualize_dataset
 from explainers.gsatexplainer import get_gsatexplainer
 from explainers.pgexplainer import get_pgexplainer
@@ -18,6 +18,7 @@ from torch_geometric.loader import DataLoader
 from classifiers.train_classfier import quick_eval_model, run_one_epoch, train
 from explainers.gnnexplainer import get_gnnexplainer
 from torch_geometric.seed import seed_everything
+
 
 def get_data_loaders(dataset_name: str, batch_size: int) -> tuple[Dataset, dict]:
     if dataset_name == "ba_2motifs":
@@ -60,8 +61,8 @@ def get_classification_model(dataset:Dataset ,model_name: str, configuration: di
     else:
         raise NotImplemented
 
-def main(dataset_name: str, classifier_name: str, explainer_name: str):
-    # seed_everything(41)
+def main(dataset_name: str, classifier_name: str, explainer_names: list[str]):
+    seed_everything(41)
     with open(f'./config/{dataset_name}.yml', 'r') as config_file:
         configuration = yaml.safe_load(config_file)
     batch_size = configuration['batch_size']
@@ -73,6 +74,7 @@ def main(dataset_name: str, classifier_name: str, explainer_name: str):
     
     classifier, model_configuration = get_classification_model(dataset, classifier_name, configuration)
     classifier_state_dict_path = f"../models/{dataset_name}-{classifier_name}.pt"
+    log_file_path = f"logs/{dataset_name}/{dataset_name}-{classifier_name}-train_log.txt"
     if configuration['use_cached_classifier'] and Path(classifier_state_dict_path).exists():
         classifier.load_state_dict(torch.load(classifier_state_dict_path))
         quick_eval_model(classifier, dataset, loaders['test'], model_configuration)
@@ -80,12 +82,17 @@ def main(dataset_name: str, classifier_name: str, explainer_name: str):
         train(classifier, loaders, dataset, model_configuration)
         torch.save(classifier.state_dict(), classifier_state_dict_path)
     
-    topk = configuration['topk']
-    explainer = get_explainer(explainer_name, classifier, configuration, loaders)
-    create_explanations(explainer, explainer_name, dataset[int(0.8*len(dataset)):], topk=topk)
     # visualize_dataset(dataset, 5, dataset_name)
+    
+    topk = configuration['topk']
+    explainers = []
+    for explainer_name in explainer_names:
+        explainers.append(get_explainer(explainer_name, classifier, configuration, loaders))
+    # create_explanations(explainer, explainer_name, dataset[int(0.8*len(dataset)):], topk=topk)
     # evaluate_unfaithfulness(explainer, explainer_name, dataset[int(0.95*len(dataset)):])
+    evaluate_fidelity(explainers, explainer_names, dataset[int(0.95*len(dataset)):])
 
 
 if __name__ == "__main__":
-    main("circles_vs_houses", "GraphConv", "PGExplainer")
+    EXPLAINERS = ["GNNExplainer", "PGExplainer"]
+    main("circles_vs_houses", "GraphConv", EXPLAINERS)

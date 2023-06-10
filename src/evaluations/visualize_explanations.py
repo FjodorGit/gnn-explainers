@@ -1,5 +1,4 @@
 import torch
-import numpy as np
 import networkx as nx
 from networkx import Graph
 from torch_geometric.data import Data
@@ -69,8 +68,6 @@ def visualize_explanation(graph, ax):
     ax.set_title(f"Graphlabel: {graph.y}")
     edge_dict = defaultdict(float)
     for att ,(u,v) in zip(graph.att ,G.edges):
-        if u > v:
-            u, v = v, u
         edge_dict[(u,v)] += att
         edge_dict[(v,u)] += att
     

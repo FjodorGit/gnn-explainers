@@ -35,7 +35,7 @@ graphconv:
 gnnexplainer:
   lr: 0.007
   epochs: 250
-  explanation_type: 'phenomenon'
+  explanation_type: 'model'
   node_mask_type: 'attributes'
   edge_mask_type: 'object'
   model_config:
@@ -44,7 +44,7 @@ gnnexplainer:
     return_type: 'raw'  
   
 pgexplainer:
-  use_cached_explainer: False
+  use_cached_explainer: True
   lr: 0.005
   epochs: 30
   explanation_type: 'phenomenon'
