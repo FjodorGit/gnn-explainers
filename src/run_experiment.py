@@ -15,7 +15,7 @@ from classifiers.graphconv import GraphConvNet
 from torch_geometric.datasets import BA2MotifDataset
 from torch_geometric.data import Data, Dataset
 from torch_geometric.loader import DataLoader
-from classifiers.train_classfier import quick_eval_model, run_one_epoch, train
+from classifiers.train_classfier import ClassifierTrainer
 from explainers.gnnexplainer import get_gnnexplainer
 from torch_geometric.seed import seed_everything
 
@@ -63,6 +63,7 @@ def get_classification_model(dataset:Dataset ,model_name: str, configuration: di
 
 def main(dataset_name: str, classifier_name: str, explainer_names: list[str]):
     seed_everything(41)
+    Path(f"./logs/{dataset_name}/").mkdir(parents=True, exist_ok=True)
     with open(f'./config/{dataset_name}.yml', 'r') as config_file:
         configuration = yaml.safe_load(config_file)
     batch_size = configuration['batch_size']
@@ -73,13 +74,14 @@ def main(dataset_name: str, classifier_name: str, explainer_names: list[str]):
     configuration['classifier_name'] = classifier_name
     
     classifier, model_configuration = get_classification_model(dataset, classifier_name, configuration)
-    classifier_state_dict_path = f"../models/{dataset_name}-{classifier_name}.pt"
-    log_file_path = f"logs/{dataset_name}/{dataset_name}-{classifier_name}-train_log.txt"
+    classifier_state_dict_path = f"logs/{dataset_name}/{classifier_name}.pt"
+    log_file_path = f"logs/{dataset_name}/{classifier_name}-train_log.txt"
+    trainer = ClassifierTrainer(log_file_path)
     if configuration['use_cached_classifier'] and Path(classifier_state_dict_path).exists():
         classifier.load_state_dict(torch.load(classifier_state_dict_path))
-        quick_eval_model(classifier, dataset, loaders['test'], model_configuration)
+        trainer.quick_eval_model(classifier, dataset, loaders['test'], model_configuration)
     else:
-        train(classifier, loaders, dataset, model_configuration)
+        trainer.train(classifier, loaders, dataset, model_configuration)
         torch.save(classifier.state_dict(), classifier_state_dict_path)
     
     # visualize_dataset(dataset, 5, dataset_name)
@@ -90,7 +92,7 @@ def main(dataset_name: str, classifier_name: str, explainer_names: list[str]):
         explainers.append(get_explainer(explainer_name, classifier, configuration, loaders))
     # create_explanations(explainer, explainer_name, dataset[int(0.8*len(dataset)):], topk=topk)
     # evaluate_unfaithfulness(explainer, explainer_name, dataset[int(0.95*len(dataset)):])
-    evaluate_fidelity(explainers, explainer_names, dataset[int(0.95*len(dataset)):])
+    # evaluate_fidelity(explainers, explainer_names, dataset[int(0.95*len(dataset)):])
 
 
 if __name__ == "__main__":
