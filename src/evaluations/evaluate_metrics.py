@@ -22,7 +22,7 @@ def evaluate_unfaithfulness(explainer: Explainer, explainer_name: str, evaluatio
     plt.title(f"Unfaitfulness by {explainer_name}")
     plt.show()
 
-def evaluate_fidelity(explainers: list[Explainer], explainer_names: list[str], evaluation_dataset):
+def evaluate_fidelity(explainers: list[Explainer], explainer_names: list[str], evaluation_dataset, dataset_name):
 
     fid_pluses = [[] for _ in range(len(explainers) + 1)]
     fid_minuses = [[] for _ in range(len(explainers) + 1)]
@@ -44,6 +44,7 @@ def evaluate_fidelity(explainers: list[Explainer], explainer_names: list[str], e
         fid_minuses[len(explainers)].append(fid_minus)
         
     fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    fig.suptitle(f"Fidelity evaluation of {dataset_name}")
     ax[0].boxplot(fid_pluses, labels=explainer_names)
     ax[0].set_title(f"Fidelity+")
     ax[1].boxplot(fid_minuses, labels=explainer_names)
@@ -52,15 +53,14 @@ def evaluate_fidelity(explainers: list[Explainer], explainer_names: list[str], e
     average_fid_plus = [sum(fidp)/len(fidp) for fidp in fid_pluses] 
     one_minus_average_fid_minus = [1 - sum(fidm)/len(fidm) for fidm in fid_minuses]
     
-    ax[2].scatter(average_fid_plus, one_minus_average_fid_minus, marker="X")
-    for i, txt in enumerate(explainer_names):
-        ax[2].annotate(txt, (average_fid_plus[i], one_minus_average_fid_minus[i]))
+    for i, explainer_name in enumerate(explainer_names):
+        ax[2].scatter(average_fid_plus[i], one_minus_average_fid_minus[i], marker="X", label=f"{explainer_name}: ({average_fid_plus[i]}, {one_minus_average_fid_minus[i]})")
     ax[2].set_title(f"Correlation")
     ax[2].set_ylabel("1 - Fidelity-")
     ax[2].set_xlabel("Fidelity+")
     ax[2].set_ylim(bottom=0)
     ax[2].legend()
-    plt.savefig("../explanation_visualizations/fidelity")
+    plt.savefig(f"../explanation_visualizations/fidelity_{dataset_name}")
     plt.show()
 
 def my_unfaithfulness(explainer: Explainer, explanation, top_k = 0.2, multi_label=False):

@@ -12,11 +12,12 @@ from classifiers.gin import GIN
 from classifiers.abstract_classifier import GraphClassifier
 from classifiers.gcn import GCN
 from classifiers.graphconv import GraphConvNet
-from torch_geometric.datasets import BA2MotifDataset
+from torch_geometric.datasets import BA2MotifDataset, TUDataset
 from torch_geometric.data import Data, Dataset
 from torch_geometric.loader import DataLoader
 from classifiers.train_classfier import ClassifierTrainer
 from explainers.gnnexplainer import get_gnnexplainer
+from explainers.lars_gnnexplainer import get_larsgnnexplainer
 from torch_geometric.seed import seed_everything
 
 
@@ -25,6 +26,10 @@ def get_data_loaders(dataset_name: str, batch_size: int) -> tuple[Dataset, dict]
         dataset = BA2MotifDataset("./../data/").shuffle()
     elif dataset_name == "circles_vs_houses":
         dataset = Circles_vs_Houses("./../data/", "ba_2motifs").shuffle()
+    elif dataset_name == "mutag":
+        dataset = TUDataset("./../data/", "MUTAG").shuffle()
+    elif dataset_name == "dd":
+        dataset = TUDataset("./../data/", "DD").shuffle()
     else:
         raise NotImplemented
     train_set = dataset[:int(len(dataset) * 0.8)]
@@ -45,6 +50,9 @@ def get_explainer(explainer_name: str, classifier: GraphClassifier, configuratio
         return get_pgexplainer(classifier, loaders['train'], configuration)
     if explainer_name == "GSATExplainer":
         return get_gsatexplainer(classifier, loaders, configuration)
+    if explainer_name == "LarsGNNExplainer":
+        larsgnnexplainer_config = configuration["lars_gnnexplainer"]
+        return get_larsgnnexplainer(classifier, larsgnnexplainer_config)
     else:
         raise NotImplemented
 
@@ -62,7 +70,7 @@ def get_classification_model(dataset:Dataset ,model_name: str, configuration: di
         raise NotImplemented
 
 def main(dataset_name: str, classifier_name: str, explainer_names: list[str]):
-    seed_everything(41)
+    seed_everything(42)
     Path(f"./logs/{dataset_name}/").mkdir(parents=True, exist_ok=True)
     with open(f'./config/{dataset_name}.yml', 'r') as config_file:
         configuration = yaml.safe_load(config_file)
@@ -89,12 +97,13 @@ def main(dataset_name: str, classifier_name: str, explainer_names: list[str]):
     topk = configuration['topk']
     explainers = []
     for explainer_name in explainer_names:
-        explainers.append(get_explainer(explainer_name, classifier, configuration, loaders))
-    # create_explanations(explainer, explainer_name, dataset[int(0.8*len(dataset)):], topk=topk)
+        explainer = get_explainer(explainer_name, classifier, configuration, loaders)
+        create_explanations(explainer, explainer_name, dataset[int(0.8*len(dataset)):], f"{dataset_name} with {classifier_name}", topk=topk)
+        explainers.append(explainer)
     # evaluate_unfaithfulness(explainer, explainer_name, dataset[int(0.95*len(dataset)):])
-    # evaluate_fidelity(explainers, explainer_names, dataset[int(0.95*len(dataset)):])
+    evaluate_fidelity(explainers, explainer_names, dataset[int(0.95*len(dataset)):], f"{dataset_name} with {classifier_name}")
 
 
 if __name__ == "__main__":
-    EXPLAINERS = ["GNNExplainer", "PGExplainer"]
-    main("circles_vs_houses", "GraphConv", EXPLAINERS)
+    EXPLAINERS = ["GNNExplainer", "PGExplainer", "GSATExplainer"]
+    main("circles_vs_houses", "GCN", EXPLAINERS)

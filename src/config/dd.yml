@@ -30,23 +30,23 @@ graphconv:
   multi_label: False
   dropout_p: 0.3
   pretrain_lr: 0.001
-  pretrain_epochs: 100
+  pretrain_epochs: 50
     
 gnnexplainer:
   lr: 0.007
   epochs: 250
-  explanation_type: 'phenomenon'
+  explanation_type: 'model'
   node_mask_type: 'attributes'
   edge_mask_type: 'object'
   model_config:
     mode: 'binary_classification'
     task_level: 'graph'
     return_type: 'raw'  
-
+  
 lars_gnnexplainer:
   lr: 0.007
   epochs: 250
-  explanation_type: 'phenomenon'
+  explanation_type: 'model'
   node_mask_type: 'attributes'
   edge_mask_type: 'object'
   model_config:
@@ -57,7 +57,7 @@ lars_gnnexplainer:
 pgexplainer:
   use_cached_explainer: False
   lr: 0.005
-  epochs: 30
+  epochs: 40
   explanation_type: 'phenomenon'
   node_mask_type: null
   edge_mask_type: 'object'

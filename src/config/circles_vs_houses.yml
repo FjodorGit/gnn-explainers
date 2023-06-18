@@ -43,6 +43,17 @@ gnnexplainer:
     task_level: 'graph'
     return_type: 'raw'  
   
+lars_gnnexplainer:
+  lr: 0.007
+  epochs: 250
+  explanation_type: 'model'
+  node_mask_type: 'attributes'
+  edge_mask_type: 'object'
+  model_config:
+    mode: 'binary_classification'
+    task_level: 'graph'
+    return_type: 'raw'  
+      
 pgexplainer:
   use_cached_explainer: True
   lr: 0.005
